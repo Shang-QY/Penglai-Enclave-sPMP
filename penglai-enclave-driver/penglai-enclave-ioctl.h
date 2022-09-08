@@ -41,25 +41,6 @@ struct penglai_enclave_user_param
 	int resume_type;
 };
 
-struct penglai_enclave_sbi_param
-{
-	unsigned int * eid_ptr;
-	unsigned long paddr;
-	unsigned long size;
-	unsigned long entry_point;
-	unsigned long untrusted_ptr;
-	unsigned long untrusted_size;
-	unsigned long free_mem;
-	//enclave shared mem with kernel
-	unsigned long kbuffer;
-	unsigned long kbuffer_size;
-	unsigned long *ecall_arg0;
-	unsigned long *ecall_arg1;
-	unsigned long *ecall_arg2;
-	unsigned long *ecall_arg3;
-
-};
-
 typedef unsigned char byte;
 
 #define MD_SIZE 64
@@ -106,6 +87,34 @@ struct penglai_enclave_ioctl_attest_enclave
 	unsigned long eid;
 	unsigned long nonce;
 	struct report_t report;
+};
+
+/****************************************************************************
+* Definitions for enclave signature
+****************************************************************************/
+typedef struct _enclave_css_t {        /* 160 bytes */
+    unsigned char enclave_hash[HASH_SIZE];          /* (32) */
+    unsigned char signature[SIGNATURE_SIZE];        /* (64) */
+    unsigned char user_pub_key[PUBLIC_KEY_SIZE];    /* (64) */
+} enclave_css_t;
+
+struct penglai_enclave_sbi_param
+{
+	unsigned int * eid_ptr;
+	unsigned long paddr;
+	unsigned long size;
+	unsigned long entry_point;
+	unsigned long untrusted_ptr;
+	unsigned long untrusted_size;
+	unsigned long free_mem;
+	//enclave shared mem with kernel
+	unsigned long kbuffer;
+	unsigned long kbuffer_size;
+	unsigned long *ecall_arg0;
+	unsigned long *ecall_arg1;
+	unsigned long *ecall_arg2;
+	unsigned long *ecall_arg3;
+	enclave_css_t enclave_css;
 };
 
 long penglai_enclave_ioctl(struct file* filep, unsigned int cmd, unsigned long args);

@@ -13,4 +13,5 @@ void sign_enclave(void* signature, unsigned char *message, int len);
 
 int verify_enclave(void* signature, unsigned char *message, int len);
 
+int verify_signature(void* signature_arg, unsigned char *message, int len, unsigned char *pubkey_arg);
 #endif /* _ATTEST_H */

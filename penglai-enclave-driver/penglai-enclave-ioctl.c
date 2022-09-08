@@ -26,7 +26,7 @@ unsigned int total_enclave_page(int elf_size, int stack_size)
 
 int create_sbi_param(enclave_t* enclave, struct penglai_enclave_sbi_param * enclave_sbi_param,
 		unsigned long paddr, unsigned long size, unsigned long entry_point,
-		unsigned long untrusted_ptr, unsigned long untrusted_size, unsigned long free_mem)
+		unsigned long untrusted_ptr, unsigned long untrusted_size, unsigned long free_mem, enclave_css_t* enclave_css)
 {
 	enclave_sbi_param -> eid_ptr = (unsigned int* )__pa(&enclave -> eid);
 	enclave_sbi_param -> ecall_arg0 = (unsigned long* )__pa(&enclave -> ocall_func_id);
@@ -42,6 +42,7 @@ int create_sbi_param(enclave_t* enclave, struct penglai_enclave_sbi_param * encl
 	//enclave share mem with kernel
 	enclave_sbi_param->kbuffer = __pa(enclave->kbuffer);
 	enclave_sbi_param->kbuffer_size = enclave->kbuffer_size;
+	memcpy(&(enclave_sbi_param->enclave_css), enclave_css, sizeof(enclave_css_t));
 	return 0;
 }
 
@@ -92,6 +93,21 @@ int check_eapp_memory_size(long elf_size, long stack_size, long untrusted_mem_si
 	return 0;
 }
 
+// void printHex(unsigned char *c, int n)
+// {
+// 	int i;
+// 	for (i = 0; i < n; i++) {
+// 		printk("0x%02X, ", c[i]);
+// 		if ((i%4) == 3)
+// 		    printk(" ");
+
+// 		if ((i%16) == 15)
+// 		    printk("\n");
+// 	}
+// 	if ((i%16) != 0)
+// 		printk("\n");
+// }
+
 int penglai_enclave_create(struct file * filep, unsigned long args)
 {
 	struct penglai_enclave_user_param* enclave_param = (struct penglai_enclave_user_param*)args;
@@ -110,15 +126,19 @@ int penglai_enclave_create(struct file * filep, unsigned long args)
 	enclave_t* enclave;
 	unsigned int total_pages = total_enclave_page(elf_size, stack_size);
 	unsigned long free_mem, elf_entry;
+	meta_area_t *meta_area;
 	unsigned long order = ilog2(total_pages- 1) + 1;
 	struct sbiret ret = {0};
 
+	printk("ShangQingyu: elfmemsize: %d\n", elf_size);
+	
 	total_pages = 0x1 << order;
 	if(check_eapp_memory_size(elf_size, stack_size, untrusted_mem_size) < 0)
 	{
 		printk("KERNEL MODULE: eapp memory is out of bound \n");
 		return -1;
 	}
+	printk("ShangQingyu: total_pages: %d\n", total_pages);
 
 	acquire_big_lock(__func__);
 
@@ -130,8 +150,9 @@ int penglai_enclave_create(struct file * filep, unsigned long args)
 	}
 
 	elf_entry = 0;
+	meta_area = (meta_area_t *)kmalloc(sizeof(meta_area_t), GFP_KERNEL);
 	if(penglai_enclave_eapp_preprare(enclave->enclave_mem, elf_ptr, elf_size,
-				&elf_entry, STACK_POINT, stack_size))
+				&elf_entry, STACK_POINT, stack_size, meta_area))
 	{
 		printk("KERNEL MODULE: penglai_enclave_eapp_preprare is failed\n");;
 		goto destroy_enclave;
@@ -141,6 +162,11 @@ int penglai_enclave_create(struct file * filep, unsigned long args)
 		printk("KERNEL MODULE: elf_entry reset is failed \n");
 		goto destroy_enclave;
 	}
+	// enclave_css = (enclave_css_t *)(meta_area->body);
+	// printk("[penglai_enclave_create] signature: \n");
+    // printHex(enclave_css->signature, SIGNATURE_SIZE);
+	// printk("[penglai_enclave_create] public_key: \n");
+    // printHex(enclave_css->user_pub_key, PUBLIC_KEY_SIZE);
 
 	untrusted_mem_size = 0x1 << (ilog2(untrusted_mem_size - 1) + 1);
 	if((untrusted_mem_ptr == 0) && (untrusted_mem_size > 0))
@@ -161,8 +187,8 @@ int penglai_enclave_create(struct file * filep, unsigned long args)
 	create_sbi_param(enclave, &enclave_sbi_param,
 			(unsigned long)(enclave->enclave_mem->paddr),
 			enclave->enclave_mem->size, elf_entry, __pa(untrusted_mem_ptr),
-			untrusted_mem_size, __pa(free_mem));
-
+			untrusted_mem_size, __pa(free_mem), (enclave_css_t *)(meta_area->body));
+	kfree(meta_area);
 	printk("[Penglai Driver@%s] enclave_mem->paddr:0x%lx, size:0x%lx\n",
 			__func__, (unsigned long)(enclave->enclave_mem->paddr),
 			enclave->enclave_mem->size);

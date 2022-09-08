@@ -133,3 +133,13 @@ int verify_enclave(void* signature_arg, unsigned char *message, int len)
         (unsigned char *)(signature->r), (unsigned char *)(signature->s));
     return ret;
 }
+
+int verify_signature(void* signature_arg, unsigned char *message, int len, unsigned char *pubkey_arg)
+{
+    int ret = 0;
+    struct signature_t *signature = (struct signature_t*)signature_arg;
+    struct pubkey_t *pubkey = (struct pubkey_t *)pubkey_arg;
+    ret = SM2_Verify(message, len, pubkey->xA, pubkey->yA,
+        (unsigned char *)(signature->r), (unsigned char *)(signature->s));
+    return ret;
+}

@@ -394,6 +394,7 @@ void printHex(unsigned char *c, int n)
 uintptr_t create_enclave(struct enclave_sbi_param_t create_args)
 {
 	struct enclave_t* enclave;
+    int trusted_launch = TRUE;
 	uintptr_t retval = 0;
 
 	enclave = alloc_enclave();
@@ -444,6 +445,31 @@ uintptr_t create_enclave(struct enclave_sbi_param_t create_args)
 			enclave->thread_context.encl_ptbr, csr_read(CSR_SATP));
 
 	// Calculate the enclave's measurement
+	hash_enclave(enclave, (void*)(enclave->hash), 0);
+	printm("[Secure Monitor] monitor calculate hash:\n");
+	printHex(enclave->hash, HASH_SIZE);
+
+	printm("[Secure Monitor] hash in elf css:\n");
+	printHex(create_args.enclave_css.enclave_hash, HASH_SIZE);
+    if(sbi_memcmp(enclave->hash, create_args.enclave_css.enclave_hash, HASH_SIZE) == 0){
+        printm("[Secure Monitor] enclave's hash is consistent.\n");
+    } else {
+        trusted_launch = 0;
+        printm("[Secure Monitor] enclave's hash is wrong.\n");
+    }
+
+	if(verify_signature(create_args.enclave_css.signature,
+			create_args.enclave_css.enclave_hash, HASH_SIZE, create_args.enclave_css.user_pub_key) == 0){
+		printm("[Secure Monitor] SUCCESS: Verification of the signature in enclave_css succeeded.\n");
+	} else {
+        trusted_launch = 0;
+        printm("[Secure Monitor] FAILED: Verification of the signature in enclave_css failed.\n");
+    }
+    if(!trusted_launch){
+        printm("[Secure Monitor] Trusted launch failed.");
+        return ENCLAVE_ERROR;
+    }
+
 	retval = copy_word_to_host((unsigned int*)create_args.eid_ptr, enclave->eid);
 	if(retval != 0)
 	{
