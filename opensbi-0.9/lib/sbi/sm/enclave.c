@@ -377,6 +377,20 @@ int swap_from_enclave_to_host(uintptr_t* regs, struct enclave_t* enclave)
 	return 0;
 }
 
+void printHex(unsigned char *c, int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printm_err("0x%02X, ", c[i]);
+        if ((i%4) == 3)
+            printm_err(" ");
+        if ((i%16) == 15)
+            printm_err("\n");
+    }
+    if ((i%16) != 0)
+    printm_err("\n");
+}
+
 uintptr_t create_enclave(struct enclave_sbi_param_t create_args)
 {
 	struct enclave_t* enclave;
@@ -416,6 +430,10 @@ uintptr_t create_enclave(struct enclave_sbi_param_t create_args)
 	printm("[Penglai@%s], Dump PT for created enclave\n", __func__);
 	dump_pt(enclave->root_page_table, 1);
 #endif
+
+	hash_enclave(enclave, (void*)(enclave->hash), 0);
+	printm_err("[Secure Monitor] monitor calculate hash:\n");
+	printHex(enclave->hash, HASH_SIZE);
 
 	spin_unlock(&enclave_metadata_lock);
 	printm("[Penglai@%s] paddr:0x%lx, size:0x%lx, entry:0x%lx\n"
