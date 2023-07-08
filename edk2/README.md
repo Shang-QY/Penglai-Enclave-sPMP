@@ -1,8 +1,8 @@
 # Overview
 
-This directory holds the UEFI implementation for RiscV Virt machine including 
-a S-Mode EDK2 firmware and a StandaloneMm firmware which can be taken as a payload 
-of the OpenSBI or a TEE.
+This directory introduces PenglaiZone's support for StandaloneMm
+firmware **(devel version)** and UEFI Secure boot. Contains instructions
+for building and running the process and device tree files to use.
 
 # How to build (Linux Environment)
 
