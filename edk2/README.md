@@ -2,7 +2,7 @@
 
 This directory introduces PenglaiZone's support for StandaloneMm
 firmware **(devel version)** and UEFI Secure boot. Contains instructions
-for building and running the process and device tree files to use.
+for building and running processes and device tree files to use.
 
 # How to build (Linux Environment)
 
